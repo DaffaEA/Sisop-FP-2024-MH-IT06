@@ -17,6 +17,26 @@
 #define USER_FILE "./discorit/users.csv"
 #define PORT 8080
 
+void list_channel() {
+    FILE *file = fopen(CHANNEL_FILE, "r");
+    if (!file) {
+        printf("Error opening channel file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char channelname[100], key[100];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, channelname, key);
+        printf("%s  ", channelname);
+    }
+
+    fclose(file);
+}
+
+
+
 /*
 check global role
 */
@@ -148,7 +168,7 @@ void see_chat(const char *channelname, const char *roomname) {
     fclose(chat_file);
 }
 
-void edit_message(const char *channelname, const char *roomname, int id, const char *new_message) {
+void edit_message(const char *username, const char *channelname, const char *roomname, int id, const char *new_message) {
     char path[256];
     snprintf(path, sizeof(path), "./discorit/%s/%s/chat.csv", channelname, roomname);
     FILE *chat_file = fopen(path, "r");
@@ -164,7 +184,7 @@ void edit_message(const char *channelname, const char *roomname, int id, const c
         sscanf(line, "[%*[^][]][%d]", &stored_id);
         if (stored_id == id) {
             char *current_date = get_current_date();
-            fprintf(temp, "[%s][%d][%s] \"%s\"\n", current_date, id, "edited", new_message);
+            fprintf(temp, "[%s][%d][%s] \"%s\"\n", current_date, id, username, new_message);
             free(current_date);
         } else {
             fprintf(temp, "%s", line);
@@ -426,7 +446,34 @@ void unban_user(const char *channelname, const char *username) {
     printf("User %s unbanned\n", username);
 }
 
+void kick_user_fromchannel(const char *channelname, const char *username) {
+    char path[256];
+    snprintf(path, sizeof(path), "./discorit/%s/auth.csv", channelname);
+    FILE *auth_file = fopen(path, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!auth_file || !temp) {
+        printf("Error opening auth file.\n");
+        return;
+    }
 
+    char line[256];
+    while (fgets(line, sizeof(line), auth_file)) {
+        char stored_username[100], stored_role[10];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, stored_username, stored_role);
+        if (strcmp(stored_username, username) == 0) {
+            fprintf(temp, "%d,%s,%s\n", id, stored_username, "USER");
+        } else {
+            fprintf(temp, "%d,%s,%s\n", id, stored_username, stored_role);
+        }
+    }
+
+    fclose(auth_file);
+    fclose(temp);
+    remove(path);
+    rename("temp.csv", path);
+    printf("User %s kicked from channel\n", username);
+}
 
 /*
 AUTHORIZE, DEAUTHORIZE
@@ -545,9 +592,7 @@ void handle_command(const char *input) {
         return;
     }
 
-    char message[1024];
-    snprintf(message, sizeof(message), "%s", input);
-    send(sock, message, strlen(message), 0);
+    send(sock, input, strlen(input), 0);
     valread = read(sock, buffer, 1024);
     printf("%s\n", buffer);
     close(sock);
@@ -575,10 +620,12 @@ int main(int argc, char const *argv[]) {
 
             while (1) {
                 char input[100];
-            
-                    printf("[%s] ", username);
+                printf("[%s] ", username);
                 fgets(input, sizeof(input), stdin);
                 input[strcspn(input, "\n")] = 0; // Remove trailing newline
+
+                char original_input[100];
+                strcpy(original_input, input); // Make a copy of the input
 
                 char *cmd = strtok(input, " ");
 
@@ -590,53 +637,94 @@ int main(int argc, char const *argv[]) {
                     getchar(); // Consume the newline character left by scanf
                     join_channel(channel, key);
                     strncpy(channelname, channel, sizeof(channelname));
-                    while(1){
-                            printf("[%s/%s] ", username, channelname);
-                            fgets(input, sizeof(input), stdin);
-                            input[strcspn(input, "\n")] = 0; 
-                            char *cmd = strtok(input, " ");
-                            if (strcmp(cmd, "JOIN") == 0 && strlen(channelname) > 0) {
+                    while (1) {
+                        printf("[%s/%s] ", username, channelname);
+                        fgets(input, sizeof(input), stdin);
+                        input[strcspn(input, "\n")] = 0;
+                        strcpy(original_input, input); // Make a copy of the input
+
+                        char *cmd = strtok(input, " ");
+                        if (strcmp(cmd, "JOIN") == 0 && strlen(channelname) > 0) {
                             char *room = strtok(NULL, " ");
                             join_room(channelname, room);
                             strncpy(roomname, room, sizeof(roomname));
-
                             while (1) {
-                            printf("[%s/%s/%s] ", username, channelname, roomname);
-                            fgets(input, sizeof(input), stdin);
-                            input[strcspn(input, "\n")] = 0; // Remove trailing newline
-                            char *chat_cmd = strtok(input, " ");
-                            if (strcmp(chat_cmd, "CHAT") == 0) {
-                            char *message = strtok(NULL, "\n");
-                            send_message(channelname, roomname, username, message);
-                            } else if (strcmp(chat_cmd, "SEE") == 0) {
-                            see_chat(channelname, roomname);
-                            } else if (strcmp(chat_cmd, "EDIT") == 0) {
-                                char* str = strtok(NULL, " ");
-                                if(strcmp (str, "CHAT") == 0){
-                                int id = atoi(strtok(NULL, " "));
-                                char *new_message = strtok(NULL, "\n");
-                                edit_message(channelname, roomname, id, new_message);
-                                }
-                            } else if (strcmp(chat_cmd, "DEL") == 0) {
-                            char *str = strtok(NULL, " ");
-                            if (strcmp(str, "CHAT") == 0) {
-                            int id = atoi(strtok(NULL, " "));
-                            delete_message(channelname, roomname, id);
-                            }
-                            } else if (strcmp(chat_cmd, "EXIT") == 0) {
-                            roomname[0] = '\0'; // Exit room
-                            break;
-                            }
-                    }
-                } else if (strcmp(cmd, "CREATE") == 0 && strlen(channelname) > 0) {
-                    char *entity = strtok(NULL, " ");
-                    if (strcmp(entity, "ROOM") == 0) {
-                        char *room = strtok(NULL, " ");
-                        create_room(channelname, room);
-                    }
-                }else if (strcmp(cmd, "LIST") == 0 && strlen(channelname) > 0) {
-                    list_room(channelname);}
+                                printf("[%s/%s/%s] ", username, channelname, roomname);
+                                fgets(input, sizeof(input), stdin);
+                                input[strcspn(input, "\n")] = 0; // Remove trailing newline
+                                strcpy(original_input, input); // Make a copy of the input
 
+                                char *chat_cmd = strtok(input, " ");
+                                if (strcmp(chat_cmd, "CHAT") == 0) {
+                                    char *message = strtok(NULL, "\n");
+                                    send_message(channelname, roomname, username, message);
+                                } else if (strcmp(chat_cmd, "SEE") == 0) {
+                                    see_chat(channelname, roomname);
+                                } else if (strcmp(chat_cmd, "EDIT") == 0) {
+                                    char *str = strtok(NULL, " ");
+                                    if (strcmp(str, "CHAT") == 0) {
+                                        int id = atoi(strtok(NULL, " "));
+                                        char *new_message = strtok(NULL, "\n");
+                                        edit_message(username, channelname, roomname, id, new_message);
+                                    }
+                                } else if (strcmp(chat_cmd, "DEL") == 0) {
+                                    char *str = strtok(NULL, " ");
+                                    if (strcmp(str, "CHAT") == 0) {
+                                        int id = atoi(strtok(NULL, " "));
+                                        delete_message(channelname, roomname, id);
+                                    }
+                                } else if (strcmp(chat_cmd, "EXIT") == 0) {
+                                    roomname[0] = '\0'; // Exit room
+                                    break;
+                                }
+                            }
+                        } else if (strcmp(cmd, "LIST") == 0 && strlen(channelname) > 0) {
+                            list_room(channelname);
+                        } else if (check_role_userchannel(channelname, username) == 0){
+                            else if (strcmp(cmd, "CREATE") == 0 && strlen(channelname) > 0) {
+                            char *entity = strtok(NULL, " ");
+                            if (strcmp(entity, "ROOM") == 0) {
+                                char *room = strtok(NULL, " ");
+                                create_room(channelname, room);
+                            }
+                        } else if (strcmp(cmd, "EDIT") == 0 && strlen(channelname) > 0) {
+                            char *entity = strtok(NULL, " ");
+                            if (strcmp(entity, "ROOM") == 0) {
+                                char *room = strtok(NULL, " ");
+                                char *to = strtok(NULL, " ");
+                                char *newname = strtok(NULL, " ");
+                                if(strcmp(to, "TO") == 0){
+                                edit_room(channelname, room, newname);
+                            }
+                        } else if (strcmp(cmd, "DEL") == 0 && strlen(channelname) > 0) {
+                            char *entity = strtok(NULL, " ");
+                            if (strcmp(entity, "ROOM") == 0) {
+                                char *room = strtok(NULL, " ");
+                                delete_room(channelname, room);
+                            }
+                        } else if (strcmp(cmd, "BAN") == 0 && strlen(channelname) > 0) {
+                            char *entity = strtok(NULL, " ");
+                            if (strcmp(entity, "USER") == 0) {
+                                char *user = strtok(NULL, " ");
+                                ban_user(channelname, user);
+                            }
+                        } else if (strcmp(cmd, "UNBAN") == 0 && strlen(channelname) > 0) {
+                            char *entity = strtok(NULL, " ");
+                            if (strcmp(entity, "USER") == 0) {
+                                char *user = strtok(NULL, " ");
+                                unban_user(channelname, user);
+                            }
+                        } else if (strcmp(cmd, "KICK") == 0 && strlen(channelname) > 0) {
+                            char *entity = strtok(NULL, " ");
+                            if (strcmp(entity, "USER") == 0) {
+                                char *user = strtok(NULL, " ");
+                                kick_user_fromchannel(channelname, user);
+                            }
+                        }
+                        } else if (strcmp(cmd, "EXIT") == 0) {
+                            channelname[0] = '\0'; // Exit channel
+                            break;
+                        }
                     }
                 } else if (strcmp(cmd, "CREATE") == 0 && strlen(channelname) == 0) {
                     char *entity = strtok(NULL, " ");
@@ -654,8 +742,24 @@ int main(int argc, char const *argv[]) {
                     } else {
                         break; // Exit application
                     }
+                }else if(strcmp(original_input, "LIST CHANNEL") == 0){
+                    list_channel();
                 }else {
-                    handle_command(input);
+                    if(check_role_userfile(username) == 0){
+                        handle_command(original_input);
+                } else{
+                    char *secondword = strtok(NULL, " ");
+                    char *thirdword = strtok(NULL, " ");
+                    if(strcmp(secondword, "CHANNEL")){
+                        if(check_role_userchannel(thirdword, username) == 0){
+                            handle_command(original_input);
+                        } else {
+                            printf("You don't have permission to do this\n");
+                        }
+
+                    }
+                }
+                    
                 }
             }
         }
@@ -665,3 +769,4 @@ int main(int argc, char const *argv[]) {
 
     return 0;
 }
+
