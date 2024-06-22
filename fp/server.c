@@ -17,23 +17,30 @@
 #define PORT 8080
 
 
-void list_user() {
+void list_user(int client_socket) {
     FILE *file = fopen(USER_FILE, "r");
     if (!file) {
-        printf("Error opening user file.\n");
+        char *error_message = "Error opening user file.\n";
+        send(client_socket, error_message, strlen(error_message), 0);
         return;
     }
 
     char line[256];
+    char user_list[1024] = "";
+
     while (fgets(line, sizeof(line), file)) {
         char stored_username[100], stored_password[100], stored_role[10];
         int id;
         sscanf(line, "%d,%[^,],%s,%s", &id, stored_username, stored_password, stored_role);
-        printf("%s  ",stored_username);
+        strcat(user_list, stored_username);
+        strcat(user_list, " ");
     }
 
     fclose(file);
+    send(client_socket, user_list, strlen(user_list), 0);
 }
+
+
 
 void edit_user_name(const char *old_name, const char *new_name) {
     FILE *file = fopen(USER_FILE, "r");
@@ -115,22 +122,6 @@ void delete_user(const char *username) {
     rename("temp.csv", USER_FILE);
 }
 
-void list_channel() {
-    FILE *file = fopen(CHANNEL_FILE, "r");
-    if (!file) {
-        printf("Error opening channel file.\n");
-        return;
-    }
-
-    char line[256];
-    while (fgets(line, sizeof(line), file)) {
-        char stored_channelname[100], stored_key[100];
-        int id;
-        sscanf(line, "%d,%[^,],%s", &id, stored_channelname, stored_key);
-        printf("%s ", stored_channelname);
-    }
-    fclose(file);
-}   
 
 bool channel_exists(const char *channelname) {
     FILE *file = fopen(CHANNEL_FILE, "r");
@@ -314,9 +305,7 @@ int main(int argc, char const *argv[]) {
             if (type == NULL) {
                 printf("Invalid command\n");
             } else if (strcmp(type, "USER") == 0) {
-                list_user();
-            } else if (strcmp(type, "CHANNEL") == 0) {
-                list_channel();
+                list_user(new_socket);
             } else {
                 printf("Invalid command\n");
             }
@@ -349,14 +338,7 @@ int main(int argc, char const *argv[]) {
             char *target = strtok(NULL, " ");
             if (target == NULL) {
                 printf("Invalid command\n");
-            } else if (strcmp(target, "USER") == 0) {
-                char *username = strtok(NULL, " ");
-                if (username == NULL) {
-                    printf("Invalid command\n");
-                } else {
-                    delete_user(username);
-                }
-            } else if (strcmp(target, "CHANNEL") == 0) {
+            }else if (strcmp(target, "CHANNEL") == 0) {
                 char *channel_name = strtok(NULL, " ");
                 if (channel_name == NULL) {
                     printf("Invalid command\n");
@@ -366,7 +348,27 @@ int main(int argc, char const *argv[]) {
             } else {
                 printf("Invalid target\n");
             }
+        } else if (strcmp(command, "REMOVE") == 0) {
+            char *target = strtok(NULL, " ");
+            if (target == NULL) {
+                printf("Invalid command\n");
+            } else if (strcmp(target, "USER") == 0) {
+                char *username = strtok(NULL, " ");
+                if (username == NULL) {
+                    printf("Invalid command\n");
+                } else {
+                    delete_user(username);
+                }
+            } else {
+                printf("Invalid target\n");
+            }
+        } else if (strcmp(command, "EXIT") == 0) {
+            break;
         } else {
+            printf("Invalid command\n");
+        }
+        
+        else {
             printf("Invalid command\n");
         }
 
