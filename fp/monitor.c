@@ -1,0 +1,94 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h> // Include stdbool.h for bool type
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define USER_FILE "users.csv" // Assuming you have a users.csv file with user data
+
+bool login_user(const char *username, const char *password) {
+    FILE *file = fopen(USER_FILE, "r");
+    if (!file) {
+        printf("Error opening user file.\n");
+        return false;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_username[100], stored_password[100], stored_role[10];
+        sscanf(line, "%*d,%[^,],%[^,],%s", stored_username, stored_password, stored_role);
+        if (strcmp(stored_username, username) == 0) {
+            fclose(file);
+            if (strcmp(stored_password, password) == 0) {
+                printf("%s logged in successfully\n", username);
+                return true;
+            } else {
+                printf("Incorrect password\n");
+                return false;
+            }
+        }
+    }
+
+    fclose(file);
+    printf("Username not found\n");
+    return false;
+}
+
+void see_chat(const char *channelname, const char *roomname, long *last_pos) {
+    char path[256];
+    snprintf(path, sizeof(path), "./discorit/%s/%s/chat.csv", channelname, roomname);
+    FILE *chat_file = fopen(path, "r");
+    if (!chat_file) {
+        printf("Error opening chat file.\n");
+        return;
+    }
+
+    // Move to the last position read
+    fseek(chat_file, *last_pos, SEEK_SET);
+
+    char line[256];
+    while (fgets(line, sizeof(line), chat_file)) {
+        printf("%s", line);
+    }
+
+    // Update last position to current file position
+    *last_pos = ftell(chat_file);
+
+    fclose(chat_file);
+}
+
+int main(int argc, char const *argv[]) {
+    if (argc < 2) {
+        printf("Usage: ./discorit <command> <args>\n");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "LOGIN") == 0 && argc == 5 && strcmp(argv[3], "-p") == 0) {
+        const char *username = argv[2];
+        const char *password = argv[4];
+        if (login_user(username, password)) {
+            // Successfully logged in, continue with chat functionality
+            long last_pos = 0; // To keep track of last read position in chat file
+
+            while (1) {
+                char input[100];
+                printf("[%s] ", username);
+                fgets(input, sizeof(input), stdin);
+                input[strcspn(input, "\n")] = 0;
+                if (strcmp(input, "-channel") == 0 && argc >= 3 && strcmp(argv[1], "-room") == 0 && argc >= 4) {
+                    const char *channelname = argv[2];
+                    const char *roomname = argv[3];
+                    see_chat(channelname, roomname, &last_pos);
+                }
+
+                // Add a delay (e.g., sleep) to check for new messages periodically
+                sleep(1); // Adjust delay time as needed
+            }
+        }
+    }
+
+    return 0;
+}
