@@ -317,7 +317,7 @@ int main(int argc, char const *argv[]) {
 
             if (target == NULL || name == NULL || flag == NULL || new_value == NULL) {
                 printf("Invalid command\n");
-            } else if (strcmp(target, "USER") == 0) {
+            } else if (strcmp(target, "WHERE") == 0) {
                 if (strcmp(flag, "-u") == 0) {
                     edit_user_name(name, new_value);
                 } else if (strcmp(flag, "-p") == 0) {
@@ -350,18 +350,7 @@ int main(int argc, char const *argv[]) {
             }
         } else if (strcmp(command, "REMOVE") == 0) {
             char *target = strtok(NULL, " ");
-            if (target == NULL) {
-                printf("Invalid command\n");
-            } else if (strcmp(target, "USER") == 0) {
-                char *username = strtok(NULL, " ");
-                if (username == NULL) {
-                    printf("Invalid command\n");
-                } else {
-                    delete_user(username);
-                }
-            } else {
-                printf("Invalid target\n");
-            }
+            delete_user(target);
         } else if (strcmp(command, "EXIT") == 0) {
             break;
         } else {
