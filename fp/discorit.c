@@ -235,7 +235,48 @@ void join_room(const char *channelname, const char *roomname) {
     }
 }
 
-void join_channel(const char *channelname, const char *key) {
+int get_next_id_auth(const char *channelname) {
+    char path[256];
+    snprintf(path, sizeof(path), "./discorit/%s/auth.csv", channelname);
+    FILE *auth_file = fopen(path, "r");
+    if (!auth_file) {
+        return 1; // Start from ID 1 if the file doesn't exist
+    }
+
+    int max_id = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), auth_file)) {
+        int id;
+        sscanf(line, "%d", &id);
+        if (id > max_id) {
+            max_id = id;
+        }
+    }
+
+    fclose(auth_file);
+    return max_id + 1;
+}
+
+bool no_same_name_auth(const char *username){
+    FILE *file = fopen(USER_FILE, "r");
+    if (!file) return false;
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_username[100];
+        sscanf(line, "%*d,%[^,]", stored_username);
+        if (strcmp(stored_username, username) == 0) {
+            fclose(file);
+            return false;
+        }
+    }
+
+    fclose(file);
+    return true;
+
+}
+
+void join_channel(const char *username, const char *channelname, const char *key) {
     FILE *file = fopen(CHANNEL_FILE, "r");
     if (!file) {
         printf("Error opening channel file.\n");
@@ -247,23 +288,35 @@ void join_channel(const char *channelname, const char *key) {
         char stored_channelname[100], stored_key[100];
         int id;
         sscanf(line, "%d,%[^,],%s", &id, stored_channelname, stored_key);
-        if (strcmp(stored_channelname, channelname) == 0) {
-            if (strcmp(stored_key, key) == 0) {
+        if (strcmp(stored_channelname, channelname) == 0 && check_role_userchannel(channelname, username) != 2) {
+            if (strcmp(stored_key, key) == 0){
                 printf("Joined channel %s\n", channelname);
+                if(no_same_name_auth(username) == 1){
+                    char path[256];
+                    snprintf(path, sizeof(path), "./discorit/%s/auth.csv", channelname);
+                    FILE *auth_file = fopen(path, "a+");
+                    if (auth_file) {
+                        fprintf(auth_file, "%d,%s,%s\n", get_next_id_auth(stored_channelname), username, "USER");
+                        fclose(auth_file);
+                    }
+                } 
             } else {
-                printf("Incorrect key\n");
+                printf("Wrong key\n");
             }
-            fclose(file);
-            return;
+        } else if (strcmp(stored_channelname, channelname) == 0 && check_role_userchannel(channelname, username) == 2) {
+            printf("You are banned from this channel\n");
+        } else {
+            printf("Channel not found\n");
         }
+        fclose(file);
+            return;
     }
-
-    fclose(file);
-    printf("Channel not found\n");
 }
 
+
+
 /*
-LIST CHANNEL AND ROOM
+LIST ROOM
 */
 
 
@@ -328,7 +381,6 @@ int get_next_id_channel() {
     return max_id + 1;
 }
 
-
 void create_channel(const char *channel_name, const char *key, const char *username) {
     if (!channel_exists(channel_name)) {
         FILE *file = fopen(CHANNEL_FILE, "a+");
@@ -381,8 +433,6 @@ void delete_room(const char *channelname, const char *roomname) {
     snprintf(path, sizeof(path), "./discorit/%s/%s", channelname, roomname);
     remove(path);
 
-    snprintf(path, sizeof(path), "./discorit/%s/%s/logs.log", channelname, roomname);
-    remove(path);
 }
 
 /*
@@ -475,6 +525,57 @@ void kick_user_fromchannel(const char *channelname, const char *username) {
     printf("User %s kicked from channel\n", username);
 }
 
+/*
+Edit own profile
+*/
+
+void edit_user_name(const char *old_name, const char *new_name) {
+    FILE *file = fopen(USER_FILE, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!file || !temp) {
+        printf("Error opening user file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_username[100], stored_password[100], stored_role[10];
+        int id;
+        sscanf(line, "%d,%[^,],%s,%s", &id, stored_username, stored_password, stored_role);
+        if (strcmp(stored_username, old_name) == 0) {
+            fprintf(temp, "%d,%s,%s,%s\n", id, new_name, stored_password, stored_role);
+        } else {
+            fprintf(temp, "%d,%s,%s,%s\n", id, stored_username, stored_password, stored_role);
+        }
+    }
+
+    fclose(file);
+    fclose(temp);
+    remove(USER_FILE);
+    rename("temp.csv", USER_FILE);
+    printf("User name changed to %s\n", new_name);
+}
+
+void edit_user_key(const char *username, const char *new_key) {
+    FILE *file = fopen(USER_FILE, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!file || !temp) {
+        printf("Error opening user file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_username[100], stored_password[100], stored_role[10];
+        int id;
+        sscanf(line, "%d,%[^,],%s,%s", &id, stored_username, stored_password, stored_role);
+        if (strcmp(stored_username, username) == 0) {
+            fprintf(temp, "%d,%s,%s,%s\n", id, stored_username, new_key, stored_role);
+        } else {
+            fprintf(temp, "%d,%s,%s,%s\n", id, stored_username, stored_password, stored_role);
+        }
+    }
+}
 /*
 AUTHORIZE, DEAUTHORIZE
 */
@@ -635,7 +736,7 @@ int main(int argc, char const *argv[]) {
                     char key[100];
                     scanf("%s", key);
                     getchar(); // Consume the newline character left by scanf
-                    join_channel(channel, key);
+                    join_channel(username, channel, key);
                     strncpy(channelname, channel, sizeof(channelname));
                     while (1) {
                         printf("[%s/%s] ", username, channelname);
@@ -680,8 +781,8 @@ int main(int argc, char const *argv[]) {
                             }
                         } else if (strcmp(cmd, "LIST") == 0 && strlen(channelname) > 0) {
                             list_room(channelname);
-                        } else if (check_role_userchannel(channelname, username) == 0){
-                            else if (strcmp(cmd, "CREATE") == 0 && strlen(channelname) > 0) {
+                        } else if(check_role_userchannel(channelname, username) == 0 ) {
+                        if (strcmp(cmd, "CREATE") == 0 && strlen(channelname) > 0) {
                             char *entity = strtok(NULL, " ");
                             if (strcmp(entity, "ROOM") == 0) {
                                 char *room = strtok(NULL, " ");
@@ -694,7 +795,8 @@ int main(int argc, char const *argv[]) {
                                 char *to = strtok(NULL, " ");
                                 char *newname = strtok(NULL, " ");
                                 if(strcmp(to, "TO") == 0){
-                                edit_room(channelname, room, newname);
+                                    edit_room(channelname, room, newname);
+                                }
                             }
                         } else if (strcmp(cmd, "DEL") == 0 && strlen(channelname) > 0) {
                             char *entity = strtok(NULL, " ");
@@ -720,8 +822,7 @@ int main(int argc, char const *argv[]) {
                                 char *user = strtok(NULL, " ");
                                 kick_user_fromchannel(channelname, user);
                             }
-                        }
-                        } else if (strcmp(cmd, "EXIT") == 0) {
+                        } } else if (strcmp(cmd, "EXIT") == 0) {
                             channelname[0] = '\0'; // Exit channel
                             break;
                         }
@@ -742,24 +843,38 @@ int main(int argc, char const *argv[]) {
                     } else {
                         break; // Exit application
                     }
-                }else if(strcmp(original_input, "LIST CHANNEL") == 0){
+                } else if (strcmp(original_input, "LIST CHANNEL") == 0) {
                     list_channel();
-                }else {
-                    if(check_role_userfile(username) == 0){
-                        handle_command(original_input);
-                } else{
-                    char *secondword = strtok(NULL, " ");
-                    char *thirdword = strtok(NULL, " ");
-                    if(strcmp(secondword, "CHANNEL")){
-                        if(check_role_userchannel(thirdword, username) == 0){
-                            handle_command(original_input);
-                        } else {
-                            printf("You don't have permission to do this\n");
+                } else if (strcmp(cmd, "EDIT") == 0 && strlen(channelname) == 0) {
+                    char *entity = strtok(NULL, " ");
+                    if (strcmp(entity, "PROFILE") == 0) {
+                        char *self = strtok(NULL, " ");
+                        if (strcmp(self, "SELF") == 0) {
+                            char *username = strtok(NULL, " ");
+                            char *flag = strtok(NULL, " ");
+                            if (strcmp(flag, "-u") == 0) {
+                                char *new_username = strtok(NULL, " ");
+                                edit_user_name(username, new_username);
+                            } else if (strcmp(flag, "-k") == 0) {
+                                char *new_password = strtok(NULL, " ");
+                                edit_user_key(username, new_password);
+                            }
                         }
-
                     }
-                }
-                    
+                }else {
+                    if (check_role_userfile(username) == 0) {
+                        handle_command(original_input);
+                    } else {
+                        char *secondword = strtok(NULL, " ");
+                        char *thirdword = strtok(NULL, " ");
+                        if (strcmp(secondword, "CHANNEL") == 0) {
+                            if (check_role_userchannel(thirdword, username) == 0) {
+                                handle_command(original_input);
+                            } else {
+                                printf("You don't have permission to do this\n");
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -769,4 +884,3 @@ int main(int argc, char const *argv[]) {
 
     return 0;
 }
-
