@@ -368,10 +368,7 @@ int main(int argc, char const *argv[]) {
             printf("Invalid command\n");
         }
         
-        else {
-            printf("Invalid command\n");
-        }
-
+       
         memset(buffer, 0, sizeof(buffer));
         close(new_socket);
     }
