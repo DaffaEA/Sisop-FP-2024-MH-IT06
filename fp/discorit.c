@@ -876,10 +876,14 @@ int main(int argc, char const *argv[]) {
                             edit_user_key(username, new_password);
                         }
                     } else {
-                        handle_command(original_input);
+                        if(check_role_userfile(username) == 0){
+                            handle_command(original_input);
+                        }
                     }
                 }else{
+                    if(check_role_userfile(username) == 0){
                         handle_command(original_input);
+                }
                 }
             }
         }
