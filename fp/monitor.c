@@ -37,7 +37,8 @@ bool login_user(const char *username, const char *password) {
     return false;
 }
 
-void see_chat(const char *channelname, const char *roomname, long *last_pos) {
+
+void see_chat(const char *channelname, const char *roomname) {
     char path[256];
     snprintf(path, sizeof(path), "./discorit/%s/%s/chat.csv", channelname, roomname);
     FILE *chat_file = fopen(path, "r");
@@ -46,16 +47,10 @@ void see_chat(const char *channelname, const char *roomname, long *last_pos) {
         return;
     }
 
-    // Move to the last position read
-    fseek(chat_file, *last_pos, SEEK_SET);
-
     char line[256];
     while (fgets(line, sizeof(line), chat_file)) {
         printf("%s", line);
     }
-
-    // Update last position to current file position
-    *last_pos = ftell(chat_file);
 
     fclose(chat_file);
 }
@@ -77,15 +72,21 @@ int main(int argc, char const *argv[]) {
                 char input[100];
                 printf("[%s] ", username);
                 fgets(input, sizeof(input), stdin);
-                input[strcspn(input, "\n")] = 0;
-                if (strcmp(input, "-channel") == 0 && argc >= 3 && strcmp(argv[1], "-room") == 0 && argc >= 4) {
-                    const char *channelname = argv[2];
-                    const char *roomname = argv[3];
-                    see_chat(channelname, roomname, &last_pos);
+                char *firstword = strtok(input, " ");
+                char *channelname = strtok(NULL, " ");
+                char *thirdword = strtok(NULL, " ");
+                char *roomname = strtok(NULL, " ");
+                printf("firstword: %s\n", firstword);
+                printf("channelname: %s\n", channelname);
+                printf("thirdword: %s\n", thirdword);
+                printf("roomname: %s\n", roomname);
+                if(strcmp(firstword, "-channel") == 0 && strcmp(thirdword, "-room") == 0) {
+                        see_chat(channelname, roomname);
+                        sleep(1);
+                } else {
+                    printf("Invalid command\n");
                 }
-
-                // Add a delay (e.g., sleep) to check for new messages periodically
-                sleep(1); // Adjust delay time as needed
+                
             }
         }
     }
