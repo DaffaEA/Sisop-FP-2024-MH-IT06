@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define USER_FILE "users.csv" // Assuming you have a users.csv file with user data
+#define USER_FILE "./discorit/users.csv" // Assuming you have a users.csv file with user data
 
 bool login_user(const char *username, const char *password) {
     FILE *file = fopen(USER_FILE, "r");
