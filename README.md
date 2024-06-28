@@ -392,11 +392,11 @@ void delete_message(const char *channelname, const char *roomname, int id) {
 ```
 </details>
 
-![alt text](![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3048bb4c-e024-46b6-8923-39584eafecef))
+![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3048bb4c-e024-46b6-8923-39584eafecef)
 
-![alt text](![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/faf6e36f-1dde-4f2f-b6d0-60c5e3fc259a))
+![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/faf6e36f-1dde-4f2f-b6d0-60c5e3fc259a)
 
-![alt text](![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3607877c-8318-4f03-ae3f-98a39cba9729))
+![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3607877c-8318-4f03-ae3f-98a39cba9729)
 
 
 
