@@ -392,11 +392,265 @@ void delete_message(const char *channelname, const char *roomname, int id) {
 ```
 </details>
 
-![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3048bb4c-e024-46b6-8923-39584eafecef)
+## Channel
 
-![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/faf6e36f-1dde-4f2f-b6d0-60c5e3fc259a)
+### Create Channel
+Fungsi `create_channel` adalah untuk membuat channel didalam suatu server. 
 
-![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3607877c-8318-4f03-ae3f-98a39cba9729)
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void create_channel(const char *channel_name, const char *key, const char *username) {
+    if (!channel_exists(channel_name)) {
+        FILE *file = fopen(CHANNEL_FILE, "a+");
+        if (!file) {
+            printf("Error opening channel file.\n");
+            return;
+        }
+
+        int id = get_next_id_channel();
+
+        fprintf(file, "%d,%s,%s\n", id, channel_name, key);
+        fclose(file);
+        printf("Channel %s created\n", channel_name);
+
+        char path[256];
+        snprintf(path, sizeof(path), "./discorit/%s", channel_name);
+        mkdir(path, 0777);
+        snprintf(path, sizeof(path), "./discorit/%s/auth.csv", channel_name);
+        FILE *auth_file = fopen(path, "w");
+        if (auth_file) {
+            fprintf(auth_file, "1,%s,%s\n", username, "ADMIN");
+            fclose(auth_file);
+        }
+    } else {
+        printf("Channel %s already exists\n", channel_name);
+    }
+}
+```
+</details>
+
+### List Channel
+Fungsi `list_channel` adalah untuk menampilkan channel yang ada agar kita bisa melihat dimana saja kita bergabung
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void list_channel() {
+    FILE *file = fopen(CHANNEL_FILE, "r");
+    if (!file) {
+        printf("Error opening channel file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char channelname[100], key[100];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, channelname, key);
+        printf("%s  ", channelname);
+    }
+
+    fclose(file);
+}
+
+```
+</details>
+
+### Edit Channel
+
+Fungsi `edit_channel` untuk mengedit channel channel dimana kita bergabung
+
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void editchannelname(const char *old_name, const char *new_name) {
+    if (channel_exists(new_name)) {
+        printf("Channel %s already exists\n", new_name);
+        return;
+    }
+
+    FILE *file = fopen(CHANNEL_FILE, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!file || !temp) {
+        printf("Error opening channel file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_channelname[100], stored_key[100];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, stored_channelname, stored_key);
+        if (strcmp(stored_channelname, old_name) == 0) {
+            fprintf(temp, "%d,%s,%s\n", id, new_name, stored_key);
+        } else {
+            fprintf(temp, "%d,%s,%s\n", id, stored_channelname, stored_key);
+        }
+    }
+
+```
+</details>
+
+### Delete Channel
+Fungsi `deletechannel` untuk menghapus channel channel dimana kita bergabung
+
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void deletechannel(const char *channelname) {
+    FILE *file = fopen(CHANNEL_FILE, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!file || !temp) {
+        printf("Error opening channel file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_channelname[100], stored_key[100];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, stored_channelname, stored_key);
+        if (strcmp(stored_channelname, channelname) == 0) {
+            printf("Channel %s deleted\n", channelname);
+            continue;
+        }
+        fprintf(temp, "%d,%s,%s\n", id, stored_channelname, stored_key);
+    }
+
+```
+</details>
+
+## Room
+Fungsi `create_room` adalah untuk membuat room ketika kita berada dalam suatu channel
+
+### Create Room
+Fungsi `create_room` adalah untuk membuat room didalam suatu channel
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void create_room(const char *channelname, const char *roomname) {
+    char path[256];
+    snprintf(path, sizeof(path), "./discorit/%s/%s", channelname, roomname);
+    mkdir(path, 0777);
+
+    snprintf(path, sizeof(path), "./discorit/%s/%s/chat.csv", channelname, roomname);
+    FILE *chat_file = fopen(path, "w");
+    if (chat_file) {
+        fclose(chat_file);
+    }
+}
+```
+</details>
+
+### List Room
+Fungsi `list_room` untuk menampilkan room yang terdapat dalam suatu channel
+
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void list_room(const char *channelname) {
+    char path[256];
+    snprintf(path, sizeof(path), "./discorit/%s", channelname);
+    DIR *dir = opendir(path);
+    if (!dir) {
+        printf("Error opening directory.\n");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            printf("%s\n", entry->d_name);
+        }
+    }
+
+    closedir(dir);
+}
+
+```
+</details>
+
+### Edit Room
+Fungsi `edit_room` adalah untuk meng edit room yang ada dalam suatu channel. Bisa berupa penggantian nama, deskripsi, dan lain lain. 
+
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void edit_room(const char *channelname, const char *roomname, const char *newname) {
+    char old_path[256], new_path[256];
+    snprintf(old_path, sizeof(old_path), "./discorit/%s/%s", channelname, roomname);
+    snprintf(new_path, sizeof(new_path), "./discorit/%s/%s", channelname, newname);
+    rename(old_path, new_path);
+}
+
+```
+</details>
+
+### Delete Room
+Fungsi `delete_room` adalah untuk menghapus ruang yang berada dalam suatu server
+
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void delete_room(const char *channelname, const char *roomname) {
+    char path[256];
+    snprintf(path, sizeof(path), "./discorit/%s/%s", channelname, roomname);
+    remove(path);
+
+}
+```
+</details>
+
+## User
+
+### User List
+Fungsi `list_user` adalah untuk menampilkan siapa saja yang terdapat dalam server
+
+<details>
+<summary><h3>Detail Kode</h3></summary>
+
+  ```c
+void list_user(int client_socket) {
+    FILE *file = fopen(USER_FILE, "r");
+    if (!file) {
+        char *error_message = "Error opening user file.\n";
+        send(client_socket, error_message, strlen(error_message), 0);
+        return;
+    }
+
+    char line[256];
+    char user_list[1024] = "";
+
+    while (fgets(line, sizeof(line), file)) {
+        char stored_username[100], stored_password[100], stored_role[10];
+        int id;
+        sscanf(line, "%d,%[^,],%s,%s", &id, stored_username, stored_password, stored_role);
+        strcat(user_list, stored_username);
+        strcat(user_list, " ");
+    }
+
+    fclose(file);
+    send(client_socket, user_list, strlen(user_list), 0);
+}
+
+
+```
+</details>
+
+
+![alt text](![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3048bb4c-e024-46b6-8923-39584eafecef))
+
+![alt text](![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/faf6e36f-1dde-4f2f-b6d0-60c5e3fc259a))
+
+![alt text](![image](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/142997842/3607877c-8318-4f03-ae3f-98a39cba9729))
 
 
 
