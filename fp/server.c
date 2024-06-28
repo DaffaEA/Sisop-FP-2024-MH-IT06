@@ -220,6 +220,33 @@ void editchannelname(const char *old_name, const char *new_name) {
     rename(old_path, new_path);
 }
 
+void editchannelkey(const char *channelname, const char *new_key) {
+    FILE *file = fopen(CHANNEL_FILE, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!file || !temp) {
+        printf("Error opening channel file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_channelname[100], stored_key[100];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, stored_channelname, stored_key);
+        if (strcmp(stored_channelname, channelname) == 0) {
+            fprintf(temp, "%d,%s,%s\n", id, stored_channelname, new_key);
+        } else {
+            fprintf(temp, "%d,%s,%s\n", id, stored_channelname, stored_key);
+        }
+    }
+
+    fclose(file);
+    fclose(temp);
+    remove(CHANNEL_FILE);
+    rename("temp.csv", CHANNEL_FILE);
+    printf("Channel key changed\n");
+}
+
 void delete_directory(const char *path) {
     DIR *d = opendir(path);
     if (!d) return;
@@ -349,8 +376,10 @@ int main(int argc, char const *argv[]) {
                     printf("Invalid flag\n");
                 }
             } else if (strcmp(target, "CHANNEL") == 0) {
-                if (strcmp(flag, "TO") == 0) {
+                if (strcmp(flag, "-u") == 0) {
                     editchannelname(name, new_value);
+                } else if (strcmp(flag, "-k") == 0) {
+                    editchannelkey(name, new_value);
                 } else {
                     printf("Invalid flag\n");
                 }
@@ -387,3 +416,4 @@ int main(int argc, char const *argv[]) {
 
     return 0;
 }
+
