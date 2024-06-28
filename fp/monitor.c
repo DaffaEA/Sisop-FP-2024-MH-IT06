@@ -75,14 +75,13 @@ int main(int argc, char const *argv[]) {
                 char *firstword = strtok(input, " ");
                 char *channelname = strtok(NULL, " ");
                 char *thirdword = strtok(NULL, " ");
-                char *roomname = strtok(NULL, " ");
-                printf("firstword: %s\n", firstword);
-                printf("channelname: %s\n", channelname);
-                printf("thirdword: %s\n", thirdword);
-                printf("roomname: %s\n", roomname);
+                char *roomname = strtok(NULL, "\n");
                 if(strcmp(firstword, "-channel") == 0 && strcmp(thirdword, "-room") == 0) {
+                while(1){
                         see_chat(channelname, roomname);
                         sleep(1);
+                        system("clear");
+                    }
                 } else {
                     printf("Invalid command\n");
                 }
