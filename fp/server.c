@@ -16,6 +16,27 @@
 #define USER_FILE "./discorit/users.csv"
 #define PORT 8080
 
+void daemonize() {
+    pid_t pid, sid;
+    pid = fork();
+    if (pid < 0) {
+        exit(EXIT_FAILURE);
+    }
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+    umask(0);
+    sid = setsid();
+    if (sid < 0) {
+        exit(EXIT_FAILURE);
+    }
+    if ((chdir("/home/daffaea/fpsisop")) < 0) {
+        exit(EXIT_FAILURE);
+    }
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+}
 
 void list_user(int client_socket) {
     FILE *file = fopen(USER_FILE, "r");
@@ -251,7 +272,8 @@ void deletechannel(const char *channelname) {
 
 
 int main(int argc, char const *argv[]) {
-    while (1) {
+   daemonize();
+   while(1){
         int server_fd, new_socket, valread;
         struct sockaddr_in address;
         int opt = 1;
@@ -281,6 +303,7 @@ int main(int argc, char const *argv[]) {
             perror("listen");
             exit(EXIT_FAILURE);
         }
+  
 
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
             perror("accept");
