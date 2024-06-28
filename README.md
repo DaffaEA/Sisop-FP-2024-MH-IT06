@@ -698,9 +698,42 @@ void list_user(int client_socket) {
 
 ### Perbaikan pada Monitor
 
+![Screenshot from 2024-06-28 23-32-47](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/132379720/35d1b33a-d14e-44f9-b995-33817c2c9ed4)
+
 ### Menambahkan fitur edit channel key
 
+```c
+void editchannelkey(const char *channelname, const char *new_key) {
+    FILE *file = fopen(CHANNEL_FILE, "r");
+    FILE *temp = fopen("temp.csv", "w");
+    if (!file || !temp) {
+        printf("Error opening channel file.\n");
+        return;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        char stored_channelname[100], stored_key[100];
+        int id;
+        sscanf(line, "%d,%[^,],%s", &id, stored_channelname, stored_key);
+        if (strcmp(stored_channelname, channelname) == 0) {
+            fprintf(temp, "%d,%s,%s\n", id, stored_channelname, new_key);
+        } else {
+            fprintf(temp, "%d,%s,%s\n", id, stored_channelname, stored_key);
+        }
+    }
+
+    fclose(file);
+    fclose(temp);
+    remove(CHANNEL_FILE);
+    rename("temp.csv", CHANNEL_FILE);
+    printf("Channel key changed\n");
+}
+```
+
 ### Server berjalan secara daemon
+
+![Screenshot from 2024-06-28 23-40-05](https://github.com/DaffaEA/Sisop-FP-2024-MH-IT06/assets/132379720/ed13a244-2d5d-4caa-ad93-4bf78d66f4e4)
 
 
 
