@@ -31,7 +31,7 @@ void list_channel() {
         sscanf(line, "%d,%[^,],%s", &id, channelname, key);
         printf("%s  ", channelname);
     }
-
+    printf("\n");
     fclose(file);
 }
 
@@ -876,14 +876,14 @@ int main(int argc, char const *argv[]) {
                             edit_user_key(username, new_password);
                         }
                     } else {
-                        if(check_role_userfile(username) == 0){
+                   
                             handle_command(original_input);
-                        }
+                        
                     }
                 }else{
-                    if(check_role_userfile(username) == 0){
+          
                         handle_command(original_input);
-                }
+                
                 }
             }
         }
