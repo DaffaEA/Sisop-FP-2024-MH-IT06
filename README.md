@@ -395,7 +395,7 @@ void delete_message(const char *channelname, const char *roomname, int id) {
 ## Channel
 
 ### Create Channel
-Fungsi `create_channel` adalah untuk membuat channel didalam suatu server. 
+Fungsi `create_channel` dalam kode ini bertujuan untuk membuat saluran baru dengan nama yang diberikan, beserta file autentikasi yang sesuai. Pertama, fungsi memeriksa apakah saluran dengan nama tersebut sudah ada menggunakan `channel_exists`. Jika tidak ada, fungsi membuka file saluran CHANNEL_FILE dalam mode append dan membaca (a+). Setelah itu, ia mendapatkan ID saluran berikutnya melalui `get_next_id_channel` dan menulis data saluran baru ke dalam file tersebut. Fungsi kemudian membuat direktori untuk saluran baru di bawah folder ./discorit/ dan membuat file autentikasi (auth.csv) di dalamnya. File autentikasi ini diisi dengan data pengguna pertama yang memiliki peran "ADMIN". Jika saluran sudah ada, fungsi akan menampilkan pesan bahwa saluran tersebut sudah ada.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
@@ -432,7 +432,8 @@ void create_channel(const char *channel_name, const char *key, const char *usern
 </details>
 
 ### List Channel
-Fungsi `list_channel` adalah untuk menampilkan channel yang ada agar kita bisa melihat dimana saja kita bergabung
+Fungsi `list_channel` dalam kode ini bertujuan untuk membaca dan menampilkan daftar saluran yang tersimpan dalam file CHANNEL_FILE. Pertama, fungsi membuka file dalam mode baca ("r"). Jika gagal membuka file, fungsi akan menampilkan pesan kesalahan. Selanjutnya, fungsi membaca setiap baris dalam file menggunakan `fgets`, kemudian mengambil dan mencetak nama saluran dari setiap baris menggunakan `sscanf`. Data yang diambil termasuk ID saluran, nama saluran, dan kunci (jika ada). Setiap nama saluran kemudian dicetak dalam satu baris, memungkinkan pengguna untuk melihat daftar saluran yang ada dalam format yang sederhana. Setelah selesai, file ditutup dengan fclose.
+
 <details>
 <summary><h3>Detail Kode</h3></summary>
 
@@ -460,7 +461,11 @@ void list_channel() {
 
 ### Edit Channel
 
-Fungsi `edit_channel` untuk mengedit channel channel dimana kita bergabung
+Fungsi `editchannelname` dalam kode ini bertujuan untuk mengubah nama saluran yang sudah ada dari `old_name` menjadi `new_name`. Pertama, fungsi memeriksa apakah saluran dengan `new_name` sudah ada menggunakan `channel_exists`. Jika sudah ada, fungsi akan menampilkan pesan bahwa saluran tersebut sudah ada dan menghentikan proses pengubahan nama saluran. Selanjutnya, fungsi membuka file CHANNEL_FILE dalam mode baca ("r") dan membuka file sementara "temp.csv" dalam mode tulis ("w"). Jika ada kesalahan dalam membuka salah satu file, fungsi akan menampilkan pesan kesalahan dan menghentikan proses lebih lanjut.
+
+Selanjutnya, fungsi membaca setiap baris dari file CHANNEL_FILE menggunakan `fgets`. Untuk setiap baris, fungsi menggunakan `sscanf` untuk memisahkan ID saluran, nama saluran yang tersimpan, dan kunci (jika ada). Jika nama saluran yang tersimpan sama dengan `old_name`, fungsi akan menulis baris baru ke dalam file sementara "temp.csv" dengan menggunakan `fprintf`, mengganti `old_name` dengan `new_name` tetapi tetap menyimpan ID dan kunci yang sama. Jika nama saluran yang tersimpan tidak sama dengan `old_name`, fungsi akan menulis baris aslinya ke dalam file sementara tanpa perubahan.
+
+Proses ini memungkinkan pengubahan nama saluran secara aman dan menyimpan data lainnya yang terkait dengan saluran yang tidak diubah.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
@@ -495,7 +500,13 @@ void editchannelname(const char *old_name, const char *new_name) {
 </details>
 
 ### Delete Channel
-Fungsi `deletechannel` untuk menghapus channel channel dimana kita bergabung
+Fungsi `deletechannel` dalam kode ini bertujuan untuk menghapus sebuah saluran berdasarkan `channelname` yang diberikan. Pertama, fungsi membuka file CHANNEL_FILE dalam mode baca ("r") dan membuka file sementara "temp.csv" dalam mode tulis ("w"). Jika terjadi kesalahan dalam membuka salah satu file, fungsi akan menampilkan pesan kesalahan dan menghentikan proses lebih lanjut.
+
+Selanjutnya, fungsi membaca setiap baris dari file CHANNEL_FILE menggunakan `fgets`. Untuk setiap baris, fungsi menggunakan sscanf untuk memisahkan ID saluran, nama saluran yang tersimpan, dan kunci (jika ada). Jika nama saluran yang tersimpan sama dengan channelname yang ingin dihapus, fungsi akan mencetak pesan bahwa saluran tersebut telah dihapus menggunakan `printf`, dan proses akan melanjutkan ke baris berikutnya tanpa menulis data saluran tersebut ke dalam file sementara "temp.csv".
+
+Jika nama saluran yang tersimpan tidak sama dengan `channelname` yang ingin dihapus, fungsi akan menulis baris aslinya ke dalam file sementara "temp.csv" menggunakan `fprintf`.
+
+Setelah selesai mengolah semua baris dari file CHANNEL_FILE, file tersebut ditutup dengan `fclose`, begitu juga dengan file sementara "temp.csv". Proses ini secara efektif menghapus saluran yang sesuai dengan `channelname` dari file saluran utama, sementara menyimpan semua data saluran lainnya.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
@@ -528,7 +539,13 @@ void deletechannel(const char *channelname) {
 Fungsi `create_room` adalah untuk membuat room ketika kita berada dalam suatu channel
 
 ### Create Room
-Fungsi `create_room` adalah untuk membuat room didalam suatu channel
+
+Fungsi `create_room` dalam kode ini digunakan untuk membuat sebuah "room" atau ruang di dalam sebuah saluran Discord yang sudah ada, dengan menentukan `channelname` dan `roomname` yang diberikan. Pertama, fungsi membentuk path atau jalur direktori tempat ruang akan dibuat dengan menggunakan `snprintf` untuk menggabungkan `channelname` dan `roomname` ke dalam variabel path. Direktori ini kemudian dibuat menggunakan fungsi `mkdir` dengan mode izin 0777, yang memberikan hak akses penuh untuk direktori yang baru dibuat.
+
+Selanjutnya, fungsi menggunakan `snprintf` lagi untuk membentuk path ke file chat.csv di dalam ruang yang baru dibuat. File ini digunakan untuk menyimpan percakapan atau pesan dalam ruang tersebut. Fungsi membuka file chat.csv dalam mode tulis ("w") menggunakan `fopen`. Jika file berhasil dibuka (chat_file != NULL), fungsi akan segera menutup file tersebut dengan `fclose` untuk menyelesaikan proses pembuatan ruang.
+
+Proses ini memastikan bahwa ruang baru dibuat dalam struktur direktori yang terorganisir dengan baik di dalam folder ./discorit/, dan file chat.csv siap untuk digunakan untuk menyimpan semua pesan yang akan dituliskan di dalamnya.
+
 <details>
 <summary><h3>Detail Kode</h3></summary>
 
@@ -548,7 +565,15 @@ void create_room(const char *channelname, const char *roomname) {
 </details>
 
 ### List Room
-Fungsi `list_room` untuk menampilkan room yang terdapat dalam suatu channel
+Fungsi `list_room` dalam kode ini bertujuan untuk mencetak daftar ruang (rooms) yang ada di dalam sebuah saluran Discord dengan nama `channelname` yang diberikan. Pertama, fungsi membentuk path atau jalur direktori ke saluran tersebut menggunakan `snprintf` untuk menggabungkan `channelname` ke dalam variabel path. Fungsi ini akan membuka direktori tersebut menggunakan `opendir`.
+
+Jika tidak dapat membuka direktori (dir == NULL), fungsi akan menampilkan pesan kesalahan dan menghentikan proses lebih lanjut. Jika berhasil membuka direktori, fungsi akan membaca setiap entri (entry) dalam direktori menggunakan `readdir`.
+
+Setiap entri yang merupakan direktori (entry->d_type == DT_DIR) dan bukan "." atau ".." (direktori induk dan direktori sendiri) akan dicetak menggunakan `printf`, sehingga memberikan daftar nama ruang yang ada di dalam saluran `channelname`.
+
+Setelah selesai membaca semua entri dalam direktori, fungsi menutup direktori menggunakan `closedir` untuk menyelesaikan proses.
+
+Proses ini memungkinkan pengguna untuk melihat daftar ruang yang aktif di dalam saluran tertentu, membantu dalam navigasi dan pengelolaan ruang-ruang tersebut.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
@@ -577,7 +602,11 @@ void list_room(const char *channelname) {
 </details>
 
 ### Edit Room
-Fungsi `edit_room` adalah untuk meng edit room yang ada dalam suatu channel. Bisa berupa penggantian nama, deskripsi, dan lain lain. 
+Fungsi `edit_room` dalam kode ini bertujuan untuk mengubah nama sebuah ruang (room) di dalam sebuah saluran yang sudah ada. Pertama, fungsi membentuk path atau jalur lama (old_path) dan path baru (new_path) untuk ruang yang akan diubah namanya menggunakan `snprintf`. Variabel `old_path` menyimpan jalur ke ruang dengan nama `roomname` dalam saluran `channelname`, sedangkan `new_path` menyimpan jalur yang akan digunakan untuk nama baru newname dalam saluran yang sama.
+
+Kemudian, fungsi menggunakan fungsi sistem rename untuk mengubah nama direktori ruang dari `old_path` menjadi `new_path`. Proses ini secara efisien mengganti nama direktori ruang dalam sistem file, yang merupakan cara efektif untuk mengimplementasikan pengubahan nama ruang dalam struktur direktori`.
+
+Fungsi ini berguna untuk memudahkan pengguna dalam mengelola dan mengubah nama ruang di dalam saluran tertentu, tanpa perlu melakukan manipulasi yang rumit terhadap struktur file secara manual.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
@@ -594,7 +623,11 @@ void edit_room(const char *channelname, const char *roomname, const char *newnam
 </details>
 
 ### Delete Room
-Fungsi `delete_room` adalah untuk menghapus ruang yang berada dalam suatu server
+Fungsi `delete_room` dalam kode ini bertujuan untuk menghapus sebuah ruang (room) di dalam sebuah saluran yang sudah ada. Pertama, fungsi membentuk path atau jalur ke ruang yang akan dihapus menggunakan `snprintf` untuk menggabungkan `channelname` dan `roomname` ke dalam variabel path.
+
+Selanjutnya, fungsi menggunakan fungsi sistem remove untuk menghapus direktori atau file yang diberikan oleh path. Dalam konteks ini, remove(path) akan menghapus direktori ruang yang terletak di ./discorit/<channelname>/<roomname>.
+
+Proses ini memungkinkan untuk menghapus ruang tertentu di dalam struktur direktori dengan cara yang sederhana dan efisien. Pastikan penggunaan fungsi ini dengan hati-hati karena data yang dihapus tidak dapat dikembalikan setelah dihapus.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
@@ -612,7 +645,13 @@ void delete_room(const char *channelname, const char *roomname) {
 ## User
 
 ### User List
-Fungsi `list_user` adalah untuk menampilkan siapa saja yang terdapat dalam server
+Fungsi `list_user` dalam kode ini berfungsi untuk mengirim daftar pengguna yang ada ke client melalui socket yang diberikan `client_socket`. Pertama, fungsi membuka file USER_FILE dalam mode baca ("r"). Jika gagal membuka file, fungsi akan mengirim pesan kesalahan ke client menggunakan fungsi send dan kemudian menghentikan proses lebih lanjut dengan return.
+
+Selanjutnya, fungsi membaca setiap baris dari file USER_FILE menggunakan `fgets`. Untuk setiap baris, fungsi menggunakan sscanf untuk memisahkan ID pengguna, nama pengguna `stored_username`, kata sandi `stored_password`, dan peran `stored_role`. Nama pengguna `stored_username` ditambahkan ke dalam variabel `user_list` menggunakan `strcat`, diikuti dengan spasi untuk pemisah.
+
+Setelah selesai membaca semua baris dari file USER_FILE, file ditutup dengan `fclose`. Kemudian, fungsi mengirimkan isi dari `user_list` ke client menggunakan send, dengan panjang pesan yang dikirim adalah panjang dari `user_list`.
+
+Proses ini memungkinkan client untuk menerima daftar pengguna yang tersimpan dalam file USER_FILE, yang kemudian dapat digunakan untuk keperluan autentikasi atau manajemen pengguna lainnya dalam sistem yang menggunakan protokol komunikasi melalui socket.
 
 <details>
 <summary><h3>Detail Kode</h3></summary>
